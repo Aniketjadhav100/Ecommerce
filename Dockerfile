@@ -1,47 +1,49 @@
-# Stage 1: Build React Frontend
-FROM node:18 as frontend
+#Stage 1:Build Frontend
+FROM node:18 as build-stage
 
-WORKDIR /app/frontend
+WORKDIR /code
 
-COPY ./Frontend/ecommerce_inventory/ .
+COPY ./Frontend/ecommerce_inventory/ /code/Frontend/ecommerce_inventory/
 
+WORKDIR /code/Frontend/ecommerce_inventory
+
+#Installing packages
 RUN npm install
+
+#Building the frontend
 RUN npm run build
 
 
-# Stage 2: Build Django Backend
-FROM python:3.11-slim as backend
+#Stage 2:Build Backend
+FROM python:3.11.0
 
-# Set environment variables
+#Set Environment Variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    default-libmysqlclient-dev \
-    netcat \
- && rm -rf /var/lib/apt/lists/*
+WORKDIR /code
 
-WORKDIR /app
+#Copy Django Project to the container
+COPY ./Backend/EcommerceInventory /code/Backend/EcommerceInventory/
 
-# Install Python dependencies
-COPY ./Backend/EcommerceInventory/ ./Backend/EcommerceInventory/
-RUN pip install --upgrade pip
+#Install the required packages
 RUN pip install -r ./Backend/EcommerceInventory/requirements.txt
 
-# Copy frontend build into Django static files directory
-COPY --from=frontend /app/frontend/build ./Backend/EcommerceInventory/static/
-COPY --from=frontend /app/frontend/build/index.html ./Backend/EcommerceInventory/EcommerceInventory/templates/index.html
+#Copy the frontend build to the Django project
+COPY --from=build-stage ./code/Frontend/ecommerce_inventory/build /code/Backend/EcommerceInventory/static/
+COPY --from=build-stage ./code/Frontend/ecommerce_inventory/build/static /code/Backend/EcommerceInventory/static/
+COPY --from=build-stage ./code/Frontend/ecommerce_inventory/build/index.html /code/Backend/EcommerceInventory/EcommerceInventory/templates/index.html
 
-# Set working directory to Django app
-WORKDIR /app/Backend/EcommerceInventory
+#Run Django Migration Command
+RUN python ./Backend/EcommerceInventory/manage.py migrate
 
-# Expose Django port
-EXPOSE 8000
+#Run Django Collectstatic Command
+RUN python ./Backend/EcommerceInventory/manage.py collectstatic --no-input
 
-# Entry point script (see below)
-COPY ./entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+#Expose the port
+EXPOSE 80
 
-CMD ["/entrypoint.sh"]
+WORKDIR /code/Backend/EcommerceInventory
+
+#Run the Django Server
+CMD ["gunicorn","EcommerceInventory.wsgi:application","--bind","0.0.0.0:8000"]
