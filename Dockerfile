@@ -1,53 +1,47 @@
-# Stage 1: Build frontend
-FROM node:18 as build-stage
-WORKDIR /code
+# Stage 1: Build React Frontend
+FROM node:18 as frontend
 
-# # Set working directory for frontend
-# WORKDIR /app/frontend
+WORKDIR /app/frontend
 
+COPY ./Frontend/ecommerce_inventory/ .
 
-# # Copy frontend package files
-COPY ./Frontend/ecommerce_inventory/ /code/Frontend/ecommerce_inventory/
-
-WORKDIR /code/Frontend/ecommerce_inventory/
-# # Install frontend dependencies
 RUN npm install
-
-# # Copy frontend source code
-# COPY ./Frontend/ecommerce_inventory ./
-
-# # Build frontend (adjust this based on your React build process)
 RUN npm run build
 
-# Stage 2: Build Django backend
-FROM python:3.11.0
+
+# Stage 2: Build Django Backend
+FROM python:3.11-slim as backend
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-WORKDIR /code
 
-# Set working directory for backend
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    default-libmysqlclient-dev \
+    netcat \
+ && rm -rf /var/lib/apt/lists/*
 
-# Copy backend requirements file
-# COPY ./Backend/EcommerceInventory/requirements.txt /code/
+WORKDIR /app
 
-# Copy built frontend to Django static files directory
-
-# Copy Django project files
-COPY ./Backend/EcommerceInventory /code/Backend/EcommerceInventory/
-
+# Install Python dependencies
+COPY ./Backend/EcommerceInventory/ ./Backend/EcommerceInventory/
+RUN pip install --upgrade pip
 RUN pip install -r ./Backend/EcommerceInventory/requirements.txt
-COPY --from=build-stage ./code/Frontend/ecommerce_inventory/build ./Backend/EcommerceInventory/static/
-COPY --from=build-stage ./code/Frontend/ecommerce_inventory/build/static ./Backend/EcommerceInventory/static/
-COPY --from=build-stage ./code/Frontend/ecommerce_inventory/build/index.html ./Backend/EcommerceInventory/EcommerceInventory/templates/index.html
 
-# Collect static files
-RUN python ./Backend/EcommerceInventory/manage.py migrate
-RUN python ./Backend/EcommerceInventory/manage.py collectstatic --no-input
+# Copy frontend build into Django static files directory
+COPY --from=frontend /app/frontend/build ./Backend/EcommerceInventory/static/
+COPY --from=frontend /app/frontend/build/index.html ./Backend/EcommerceInventory/EcommerceInventory/templates/index.html
 
-# Expose port 80 (adjust as necessary)
-EXPOSE 80
-WORKDIR /code/Backend/EcommerceInventory
-# Command to run Django server
-CMD ["gunicorn", "EcommerceInventory.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Set working directory to Django app
+WORKDIR /app/Backend/EcommerceInventory
+
+# Expose Django port
+EXPOSE 8000
+
+# Entry point script (see below)
+COPY ./entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+CMD ["/entrypoint.sh"]

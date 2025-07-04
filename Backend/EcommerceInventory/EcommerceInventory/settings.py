@@ -100,11 +100,11 @@ WSGI_APPLICATION = 'EcommerceInventory.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('DATABASE_NAME'),
-        'USER': os.getenv('DATABASE_USER'),
-        'PASSWORD': os.getenv('DATABASE_PASSWORD'),
-        'HOST': os.getenv('DATABASE_HOST'),
-        'PORT': os.getenv('DATABASE_PORT'),
+        'NAME': os.getenv('Ecommerce'),
+        'USER': os.getenv('Ecommerce'),
+        'PASSWORD': os.getenv('Ecommerce'),
+        'HOST': os.getenv('ecommerce.coh6qc8cygwn.us-east-1.rds.amazonaws.com'),
+        'PORT': os.getenv('3306'),
     }
 }
 
