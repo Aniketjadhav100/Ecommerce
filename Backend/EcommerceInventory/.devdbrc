@@ -1,6 +1,6 @@
 [
   {
-    "type": "sqlite",
-    "path": "e:\\SupercodersProjects\\EcommerceInventoryManagement\\Backend\\EcommerceInventory\\db.sqlite3"
+    "type": "db.csv",
+    "path": "C:/Users/anike/OneDrive/Desktop/Ecommerce/Backend/EcommerceInventory/db.csv"
   }
 ]
